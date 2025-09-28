@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### TJY ###
+application-local.yml
+
 ### STS ###
 .apt_generated
 .classpath
