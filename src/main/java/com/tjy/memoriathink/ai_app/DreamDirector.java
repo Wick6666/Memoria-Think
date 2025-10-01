@@ -1,5 +1,8 @@
 package com.tjy.memoriathink.ai_app;
 
+import com.tjy.memoriathink.advisor.MyLoggerAdvisor;
+import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -82,7 +85,9 @@ public class DreamDirector {
         chatClient = ChatClient.builder(dashscopeChatModel)
                 .defaultSystem("SYSTEM_PROMPT")
                 .defaultAdvisors(
-                        new MessageChatMemoryAdvisor(chatMemory)
+                        new MessageChatMemoryAdvisor(chatMemory),
+                       // new ReReadingAdvisor(),
+                        new MyLoggerAdvisor()
                 )
                 .build();
     }
@@ -104,5 +109,29 @@ public class DreamDirector {
         String content = chatResponse.getResult().getOutput().getText();
         log.info("content:{}",content);
         return content;
+    }
+
+    record DreamReport(String title, List<String> suggestions) {
+    }
+
+
+    /**
+     * 梦境放映厅 (结构化输出)
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public  DreamReport dochatWithReport(String message, String chatId){
+        DreamReport dreamReport = chatClient
+                .prompt()
+                .system(SYSTEM_PROMPT + "每次对话后都要生成梦境结果，标题为{用户名}的梦境报告，内容为建议列表")
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                .call()
+                .entity(DreamReport.class);
+
+        log.info("dreamReport:{}",dreamReport);
+        return dreamReport;
     }
 }

@@ -14,7 +14,7 @@ public class Springitest implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        AssistantMessage output = dashscopeChatModel.call(new Prompt("张鑫吃牛子"))
+        AssistantMessage output = dashscopeChatModel.call(new Prompt("用张鑫，牛，喜欢，饺子造句"))
                 .getResult()
                 .getOutput();
 
