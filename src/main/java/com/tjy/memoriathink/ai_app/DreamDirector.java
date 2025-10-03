@@ -3,13 +3,18 @@ package com.tjy.memoriathink.ai_app;
 import com.tjy.memoriathink.advisor.MyLoggerAdvisor;
 import java.util.List;
 
+import com.tjy.memoriathink.chatmemory.FileBasedChatMemory;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
 import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
@@ -80,8 +85,12 @@ public class DreamDirector {
      * @param dashscopeChatModel
      */
     public DreamDirector(ChatModel dashscopeChatModel) {
+
+        // 初始化基于文件的对话记忆
+        String fileDir = System.getProperty("user.dir") + "/tmp/chat-memory";
+        ChatMemory chatMemory = new FileBasedChatMemory(fileDir);
         //初始化基于内存的回话记忆
-        ChatMemory chatMemory = new InMemoryChatMemory();
+        //ChatMemory chatMemory = new InMemoryChatMemory();
         chatClient = ChatClient.builder(dashscopeChatModel)
                 .defaultSystem("SYSTEM_PROMPT")
                 .defaultAdvisors(
@@ -133,5 +142,31 @@ public class DreamDirector {
 
         log.info("dreamReport:{}",dreamReport);
         return dreamReport;
+    }
+
+
+
+
+    @Resource
+    private VectorStore dreamVectorStore;
+    @Resource
+    private Advisor dreamRagCloudAdvisor;
+    public String doChatWithRag(String message, String chatId) {
+        ChatResponse chatResponse = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+
+                .advisors(new MyLoggerAdvisor())
+                //知识库问答
+                //.advisors(new QuestionAnswerAdvisor(dreamVectorStore))
+                //RAG增强服务 云知识库
+                .advisors(dreamRagCloudAdvisor)
+                .call()
+                .chatResponse();
+        String content = chatResponse.getResult().getOutput().getText();
+        log.info("content: {}", content);
+        return content;
     }
 }

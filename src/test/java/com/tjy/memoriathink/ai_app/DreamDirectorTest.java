@@ -39,4 +39,22 @@ class DreamDirectorTest {
         answer = dreamDirector.dochat(message, chatId);  // 注意：这里使用了loveApp，可能是笔误
         Assertions.assertNotNull(answer);  // 验证回答不为空
     }
+
+
+    @Test
+    void doChatWithRag() {
+        String chatId = UUID.randomUUID().toString();
+        String message = "昨晚梦到我在梦里很沮丧";
+        String answer =  dreamDirector.doChatWithRag(message, chatId);
+        Assertions.assertNotNull(answer);
+
+    }
+
+    @Test
+    void dochatWithReport() {
+        String chatId = java.util.UUID.randomUUID().toString();
+        String message = "我是张鑫，我喜欢做梦";
+        DreamDirector.DreamReport dreamReport = dreamDirector.dochatWithReport(message, chatId);
+        Assertions.assertNotNull(dreamReport);
+    }
 }
