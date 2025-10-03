@@ -23,7 +23,15 @@ import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvis
 @Component
 @Slf4j
 public class DreamDirector {
+    @Resource
+    private VectorStore dreamVectorStore;
+    @Resource
+    private Advisor dreamRagCloudAdvisor;
+    @Resource
+    private VectorStore pgVectorVectorStore;
+
     private final ChatClient chatClient;
+
     private static final String SYSTEM_PROMPT = "你是一位专业的梦境解析师、电影编剧与情绪辅导师的结合体。你的核心任务是：  \n" +
             "1. 倾听并引导用户详细描述梦境  \n" +
             "2. 将梦境改编成富有画面感的电影剧本（含场景、对白、分镜建议）  \n" +
@@ -147,10 +155,7 @@ public class DreamDirector {
 
 
 
-    @Resource
-    private VectorStore dreamVectorStore;
-    @Resource
-    private Advisor dreamRagCloudAdvisor;
+
     public String doChatWithRag(String message, String chatId) {
         ChatResponse chatResponse = chatClient
                 .prompt()
@@ -160,9 +165,13 @@ public class DreamDirector {
 
                 .advisors(new MyLoggerAdvisor())
                 //知识库问答
+
                 //.advisors(new QuestionAnswerAdvisor(dreamVectorStore))
                 //RAG增强服务 云知识库
-                .advisors(dreamRagCloudAdvisor)
+
+                //.advisors(dreamRagCloudAdvisor)
+                //PGSQL
+                .advisors(new QuestionAnswerAdvisor(pgVectorVectorStore))
                 .call()
                 .chatResponse();
         String content = chatResponse.getResult().getOutput().getText();
