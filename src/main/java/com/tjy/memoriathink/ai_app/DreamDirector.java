@@ -4,6 +4,8 @@ import com.tjy.memoriathink.advisor.MyLoggerAdvisor;
 import java.util.List;
 
 import com.tjy.memoriathink.chatmemory.FileBasedChatMemory;
+import com.tjy.memoriathink.rag.DreamRagCustomAdvisorFactory;
+import com.tjy.memoriathink.rag.QueryRewriter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -29,6 +31,9 @@ public class DreamDirector {
     private Advisor dreamRagCloudAdvisor;
     @Resource
     private VectorStore pgVectorVectorStore;
+    @Resource
+    private QueryRewriter  queryRewriter;
+
 
     private final ChatClient chatClient;
 
@@ -153,25 +158,38 @@ public class DreamDirector {
     }
 
 
-
-
+    /**
+     * RAG知识库对话
+     * @param message
+     * @param chatId
+     * @return
+     */
 
     public String doChatWithRag(String message, String chatId) {
+        //查询重写
+        String remessage = queryRewriter.doQueryRewrite(message);
         ChatResponse chatResponse = chatClient
                 .prompt()
-                .user(message)
+                .user(remessage)
                 .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
 
                 .advisors(new MyLoggerAdvisor())
                 //知识库问答
-
                 //.advisors(new QuestionAnswerAdvisor(dreamVectorStore))
-                //RAG增强服务 云知识库
 
+                //RAG增强服务 云知识库
                 //.advisors(dreamRagCloudAdvisor)
-                //PGSQL
-                .advisors(new QuestionAnswerAdvisor(pgVectorVectorStore))
+
+                //PGVector
+                //.advisors(new QuestionAnswerAdvisor(pgVectorVectorStore))
+
+
+                .advisors(
+                        DreamRagCustomAdvisorFactory.createDreamRagCustomAdvisor(
+                                dreamVectorStore,"伤心"
+                        )
+                )
                 .call()
                 .chatResponse();
         String content = chatResponse.getResult().getOutput().getText();

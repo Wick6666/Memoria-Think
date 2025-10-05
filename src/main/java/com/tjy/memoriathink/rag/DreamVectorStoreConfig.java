@@ -13,6 +13,8 @@ import java.util.List;
 public class DreamVectorStoreConfig {
     @Resource
     private DreamDocumentLoader dreamDocumentLoader;
+    @Resource
+    private MyKeywordEnricher myKeywordEnricher;
 
     @Bean
     VectorStore dreamVectorStore(EmbeddingModel dashscopeEmbeddingModel) {
@@ -20,7 +22,9 @@ public class DreamVectorStoreConfig {
                 .build();
 
         List<Document> documents = dreamDocumentLoader.loadMarkdowns();
-        simpleVectorStore.add(documents);
+       //补充关键词原信息
+        List<Document> enrichDocuments = myKeywordEnricher.enrichDocuments(documents);
+        simpleVectorStore.add(enrichDocuments);
         return simpleVectorStore;
     }
 
