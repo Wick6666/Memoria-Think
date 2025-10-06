@@ -57,4 +57,26 @@ class DreamDirectorTest {
         DreamDirector.DreamReport dreamReport = dreamDirector.dochatWithReport(message, chatId);
         Assertions.assertNotNull(dreamReport);
     }
+
+    @Test
+    void doChatWithTools() {
+
+
+        testMessage("帮我分析一下昨晚做的梦，梦里我在一条无限延伸的走廊里走，尽头有一扇光门。");
+
+        testMessage("最近老是做关于考试的梦，我很焦虑，梦境助手能告诉我这可能反映了什么吗？");
+
+        testMessage("给我生成一张符合‘海底星空’意境的梦境壁纸，直接保存为文件。");
+
+        testMessage("保存我的梦境记录档案为文件。");
+
+        testMessage("生成一份‘7天梦境探索计划’PDF，包含睡前冥想引导、梦境记录模板和解梦建议。");
+        }
+
+        private void testMessage(String message) {
+            String chatId = UUID.randomUUID().toString();
+            String answer = dreamDirector.doChatWithTools(message, chatId);
+            Assertions.assertNotNull(answer);
+        }
+
 }
