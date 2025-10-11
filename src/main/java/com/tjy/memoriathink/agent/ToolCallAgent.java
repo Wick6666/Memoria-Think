@@ -79,14 +79,21 @@ public class ToolCallAgent extends ReActAgent {
             AssistantMessage assistantMessage = chatResponse.getResult().getOutput();
             // 获取要调用的工具列表
             List<AssistantMessage.ToolCall> toolCallList = assistantMessage.getToolCalls();
-            // 输出提示信息
+            
+            // 2025-10-11 修改：优化日志输出格式，使用专业的分层展示
+            // 输出提示信息 - 使用专业的格式化风格
             String result = assistantMessage.getText();
-            log.info(getName() + "的思考：" + result);
-            log.info(getName() + "选择了 " + toolCallList.size() + " 个工具来使用");
-            String toolCallInfo = toolCallList.stream()
-                    .map(toolCall -> String.format("工具名称：%s，参数：%s", toolCall.name(), toolCall.arguments()))
-                    .collect(Collectors.joining("\n"));
-            log.info(toolCallInfo);
+            if (StrUtil.isNotBlank(result)) {
+                log.info("\n💭 {} 的思考过程:\n{}\n{}", getName(), "-".repeat(50), result);
+            }
+            
+            if (!toolCallList.isEmpty()) {
+                log.info("\n🔧 准备调用 {} 个工具:", toolCallList.size());
+                for (int i = 0; i < toolCallList.size(); i++) {
+                    AssistantMessage.ToolCall toolCall = toolCallList.get(i);
+                    log.info("   [{}] 工具: {} | 参数: {}", i + 1, toolCall.name(), formatToolArgs(toolCall.arguments()));
+                }
+            }
             // 如果不需要调用工具，返回 false
             if (toolCallList.isEmpty()) {
                 // 只有不调用工具时，才需要手动记录助手消息
@@ -101,6 +108,47 @@ public class ToolCallAgent extends ReActAgent {
             getMessageList().add(new AssistantMessage("处理时遇到了错误：" + e.getMessage()));
             return false;
         }
+    }
+
+    // 2025-10-11 新增：格式化工具参数，避免过长
+    /**
+     * 格式化工具参数，避免过长
+     */
+    private String formatToolArgs(String args) {
+        if (args == null) {
+            return "{}";
+        }
+        if (args.length() > 100) {
+            return args.substring(0, 100) + "...";
+        }
+        return args;
+    }
+
+    // 2025-10-11 新增：格式化工具返回结果的摘要信息，只显示关键内容
+    /**
+     * 格式化工具返回结果的摘要信息
+     */
+    private String formatToolResultSummary(String toolName, String result) {
+        if (result == null || result.isEmpty()) {
+            return "   ⚠️ 工具返回空结果";
+        }
+        
+        // 提取第一行作为摘要（通常包含关键信息）
+        String[] lines = result.split("\n", 3);
+        if (lines.length > 0 && lines[0].length() > 0) {
+            String summary = lines[0];
+            if (summary.length() > 80) {
+                summary = summary.substring(0, 80) + "...";
+            }
+            return String.format("   ✅ %s | %s", toolName, summary);
+        }
+        
+        // 降级方案：截取前 80 个字符
+        String summary = result.substring(0, Math.min(80, result.length()));
+        if (result.length() > 80) {
+            summary += "...";
+        }
+        return String.format("   ✅ %s | %s", toolName, summary);
     }
 
     /**
@@ -126,10 +174,19 @@ public class ToolCallAgent extends ReActAgent {
             // 任务结束，更改状态
             setState(AgentState.FINISHED);
         }
+        
+        // 2025-10-11 修改：格式化输出工具执行结果，只显示摘要信息
+        // 格式化输出工具执行结果
+        log.info("\n📊 工具执行结果:");
+        for (ToolResponseMessage.ToolResponse response : toolResponseMessage.getResponses()) {
+            log.info(formatToolResultSummary(response.name(), response.responseData()));
+        }
+        
+        // 返回详细结果供 AI 分析（完整数据）
         String results = toolResponseMessage.getResponses().stream()
-                .map(response -> "工具 " + response.name() + " 返回的结果：" + response.responseData())
-                .collect(Collectors.joining("\n"));
-        log.info(results);
+                .map(ToolResponseMessage.ToolResponse::responseData)
+                .collect(Collectors.joining("\n\n"));
+        
         return results;
     }
 }

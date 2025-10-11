@@ -26,6 +26,7 @@ public class WebSearchTool {
         this.apiKey = apiKey;
     }
 
+    // 2025-10-11 修改：优化返回结果，格式化输出，只保留关键信息
     @Tool(description = "Search for information from Baidu Search Engine")
     public String searchWeb(
             @ToolParam(description = "Search query keyword") String query) {
@@ -35,19 +36,58 @@ public class WebSearchTool {
         paramMap.put("engine", "baidu");
         try {
             String response = HttpUtil.get(SEARCH_API_URL, paramMap);
-            // 取出返回结果的前 5 条
             JSONObject jsonObject = JSONUtil.parseObj(response);
-            // 提取 organic_results 部分
             JSONArray organicResults = jsonObject.getJSONArray("organic_results");
-            List<Object> objects = organicResults.subList(0, 5);
-            // 拼接搜索结果为字符串
-            String result = objects.stream().map(obj -> {
-                JSONObject tmpJSONObject = (JSONObject) obj;
-                return tmpJSONObject.toString();
-            }).collect(Collectors.joining(","));
-            return result;
+
+            if (organicResults == null || organicResults.isEmpty()) {
+                return "未找到相关搜索结果";
+            }
+
+            int limit = Math.min(5, organicResults.size());
+            List<Object> objects = organicResults.subList(0, limit);
+
+            // 格式化搜索结果，只保留关键信息
+            StringBuilder formattedResult = new StringBuilder();
+            formattedResult.append(String.format("🔍 搜索结果：找到 %d 条相关信息\n", limit));
+            formattedResult.append("=" .repeat(60)).append("\n\n");
+
+            for (int i = 0; i < objects.size(); i++) {
+                JSONObject item = (JSONObject) objects.get(i);
+                String title = item.getStr("title", "无标题");
+                String link = item.getStr("link", "");
+                String snippet = item.getStr("snippet", "");
+                
+                // 清理摘要：移除高亮标记等噪音
+                snippet = cleanSnippet(snippet);
+                
+                // 限制摘要长度
+                if (snippet.length() > 150) {
+                    snippet = snippet.substring(0, 150) + "...";
+                }
+                
+                formattedResult.append(String.format("[%d] %s\n", i + 1, title));
+                formattedResult.append(String.format("    🔗 %s\n", link));
+                if (!snippet.isEmpty()) {
+                    formattedResult.append(String.format("    📄 %s\n", snippet));
+                }
+                formattedResult.append("\n");
+            }
+
+            return formattedResult.toString();
         } catch (Exception e) {
-            return "Error searching Baidu: " + e.getMessage();
+            return "搜索出错: " + e.getMessage();
         }
+    }
+
+    // 2025-10-11 新增：清理搜索结果摘要中的噪音
+    /**
+     * 清理搜索结果摘要中的噪音
+     */
+    private String cleanSnippet(String snippet) {
+        if (snippet == null) {
+            return "";
+        }
+        // 移除多余的空白字符
+        return snippet.replaceAll("\\s+", " ").trim();
     }
 }
