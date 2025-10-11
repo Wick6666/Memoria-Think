@@ -85,13 +85,6 @@ const sendMessage = async () => {
   isLoading.value = true
   
   try {
-    // 创建AI消息占位
-    const aiMessageIndex = messages.value.length
-    messages.value.push({
-      role: 'assistant',
-      content: ''
-    })
-    
     // 使用EventSource接收SSE流
     const eventSource = new EventSource(
       `/api/ai/CustomManus/chat?message=${encodeURIComponent(userMessage)}`
@@ -100,7 +93,11 @@ const sendMessage = async () => {
     eventSource.onmessage = (event) => {
       const data = event.data
       if (data && data !== '[DONE]') {
-        messages.value[aiMessageIndex].content += data
+        // 每次SSE返回都创建一个新的AI消息气泡
+        messages.value.push({
+          role: 'assistant',
+          content: data
+        })
         scrollToBottom()
       }
     }
@@ -109,8 +106,13 @@ const sendMessage = async () => {
       console.error('SSE错误:', error)
       eventSource.close()
       isLoading.value = false
-      if (!messages.value[aiMessageIndex].content) {
-        messages.value[aiMessageIndex].content = '抱歉，发生了错误，请重试。'
+      // 如果没有收到任何消息，显示错误提示
+      if (messages.value.length > 0 && messages.value[messages.value.length - 1].role === 'user') {
+        messages.value.push({
+          role: 'assistant',
+          content: '抱歉，发生了错误，请重试。'
+        })
+        scrollToBottom()
       }
     }
     
